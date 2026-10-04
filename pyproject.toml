@@ -1,0 +1,17 @@
+[project]
+name = "nsfw-classifier"
+version = "0.1.0"
+description = "FastAPI service that classifies images as safe or NSFW"
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "fastapi[standard]>=0.142.2",
+    "huggingface-hub>=1.33.0",
+    "numpy>=2.5.3",
+    "pillow>=12.3.0",
+    "pydantic-settings>=2.15.0",
+    "timm>=1.0.30",
+    "torch>=2.14.1",
+    "transformers>=5.18.0",
+]
