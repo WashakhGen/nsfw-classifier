@@ -1,0 +1,31 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        id: uv_install
+        run: uv sync --locked
+
+      - name: Ruff Check
+        if: "!cancelled() && steps.uv_install.outcome == 'success'"
+        run: uv run --no-sync ruff check
+
+      - name: Ruff Format
+        if: "!cancelled() && steps.uv_install.outcome == 'success'"
+        run: uv run --no-sync ruff format --check
+
+      - name: Pyright
+        if: "!cancelled() && steps.uv_install.outcome == 'success'"
+        run: uv run --no-sync pyright

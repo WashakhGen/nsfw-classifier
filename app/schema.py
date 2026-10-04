@@ -46,10 +46,7 @@ class NSFWResult:
         return (
             "\t".join(name for name, _ in columns)
             + "\n"
-            + "\t".join(
-                str(round(value, 3)) if isinstance(value, float) else str(value)
-                for _, value in columns
-            )
+            + "\t".join(str(round(value, 3)) if isinstance(value, float) else str(value) for _, value in columns)
         )
 
 

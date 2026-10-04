@@ -1,6 +1,7 @@
 import asyncio
 import io
 import threading
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
@@ -33,7 +34,7 @@ def load_model() -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.load_task = asyncio.create_task(asyncio.to_thread(load_model))
     yield
 
@@ -43,11 +44,7 @@ app = FastAPI(title="NSFW Detector", lifespan=lifespan)
 
 @app.get("/health")
 def health() -> JSONResponse:
-    code = (
-        status.HTTP_200_OK
-        if model_status == ModelStatus.READY
-        else status.HTTP_503_SERVICE_UNAVAILABLE
-    )
+    code = status.HTTP_200_OK if model_status == ModelStatus.READY else status.HTTP_503_SERVICE_UNAVAILABLE
     return JSONResponse(
         status_code=code,
         content={"status": model_status, "error": load_error},
@@ -84,9 +81,7 @@ def nsfw_check(file: UploadFile) -> NSFWResponse:
         image = image.convert("RGB")
 
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
-        raise HTTPException(
-            status_code=400, detail="File is not a valid image"
-        ) from None
+        raise HTTPException(status_code=400, detail="File is not a valid image") from None
 
     with checker_lock:
         log_main("Running NSFW check...")
@@ -113,6 +108,4 @@ def nsfw_check(file: UploadFile) -> NSFWResponse:
 
 
 if __name__ == "__main__":
-    uvicorn.run(
-        app, host=SETTINGS.UVICORN_HOST, port=SETTINGS.UVICORN_PORT, access_log=False
-    )
+    uvicorn.run(app, host=SETTINGS.UVICORN_HOST, port=SETTINGS.UVICORN_PORT, access_log=False)

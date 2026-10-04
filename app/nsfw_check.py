@@ -1,6 +1,6 @@
 from pathlib import Path
 from time import perf_counter
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -16,33 +16,25 @@ from app.settings import SETTINGS
 
 
 class NSFWCheck:
-    def __init__(self):
+    def __init__(self) -> None:
         self.safety_checker = self.load_safety_checker()
 
     def _warmup(self, runs: int = 3) -> None:
         log_main("Warming up safety checker...")
         start = perf_counter()
-        image = Image.fromarray(
-            np.random.randint(0, 256, (768, 1024, 3), dtype=np.uint8)
-        )
+        image = Image.fromarray(np.random.randint(0, 256, (768, 1024, 3), dtype=np.uint8))
         for _ in range(runs):
             self.safety_checker(image)
         log_main(f"Warmup done in {perf_counter() - start:.1f}s")
 
     def _compile(self) -> None:
         eager_model = self.safety_checker.model
-        mode = (
-            "max-autotune-no-cudagraphs"
-            if hardware.vendor() == hardware.HWVendor.CUDA
-            else "default"
-        )
+        mode = "max-autotune-no-cudagraphs" if hardware.vendor() == hardware.HWVendor.CUDA else "default"
         log_main(f"Compiling safety checker (mode={mode})...")
         start = perf_counter()
 
         try:
-            self.safety_checker.model = cast(
-                PreTrainedModel, torch.compile(eager_model, mode=mode)
-            )
+            self.safety_checker.model = cast(PreTrainedModel, torch.compile(eager_model, mode=mode))
             self._warmup()
             log_main(f"Compiled in {perf_counter() - start:.1f}s")
 
@@ -52,9 +44,7 @@ class NSFWCheck:
             self._warmup()
 
     @torch.no_grad()
-    def load_safety_checker(
-        self, model_name: str = SETTINGS.MODEL_NAME
-    ) -> ImageClassificationPipeline:
+    def load_safety_checker(self, model_name: str = SETTINGS.MODEL_NAME) -> ImageClassificationPipeline:
         log_main(f"Loading safety checker model {model_name}...")
         MODEL_DIR = Path(SETTINGS.MODELS_PATH) / model_name.split("/")[-1]
 
@@ -94,7 +84,7 @@ class NSFWCheck:
     def run_safety_check(self, image: Image.Image) -> tuple[NSFWResult, float]:
         try:
             start = perf_counter()
-            result = self.safety_checker(image)
+            raw = self.safety_checker(image)
             duration = round(perf_counter() - start, 4)
         except torch.OutOfMemoryError as e:
             hardware.empty_cache()  # free cached memory so the next request can succeed
@@ -102,16 +92,10 @@ class NSFWCheck:
         except Exception as e:
             raise InferenceError(f"Inference failed: {e}") from e
 
-        while (
-            isinstance(result, list)
-            and len(result) == 1
-            and isinstance(result[0], list)
-        ):
-            result = result[0]
+        result = cast("list[dict[str, Any]]", raw)  # one image in -> list of {label, score}
+        if not result:
+            raise InferenceError("Model returned no predictions")
 
-        if not result or not isinstance(result, list):
-            raise ValueError(f"{(not result)=} or {type(result)=}")
-
-        record: dict[str, float] = {r["label"]: r["score"] for r in result}
+        record = {r["label"]: float(r["score"]) for r in result}
 
         return NSFWResult(**record), duration

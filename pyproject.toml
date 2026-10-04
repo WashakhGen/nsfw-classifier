@@ -15,3 +15,30 @@ dependencies = [
     "torch>=2.14.1",
     "transformers>=5.18.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.2",
+    "pyright>=1.1.414",
+    "ruff>=0.16.10",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # import sorting
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "C4",  # comprehensions
+    "SIM", # simplify
+    "ANN", # annotations
+    "RUF", # ruff-specific
+]
+
+[tool.pyright]
+exclude = ["**/.*", "**/__pycache__", "models", "logs"]

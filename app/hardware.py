@@ -52,16 +52,10 @@ def device() -> torch.device:
     if SETTINGS.DEVICE != "auto":
         dev = torch.device(SETTINGS.DEVICE)
         if dev.type != "cpu" and dev.type != vendor().device_type:
-            raise RuntimeError(
-                f"DEVICE={SETTINGS.DEVICE} requested but this machine has {vendor()}"
-            )
+            raise RuntimeError(f"DEVICE={SETTINGS.DEVICE} requested but this machine has {vendor()}")
         return dev
     dev_type = vendor().device_type
-    return (
-        torch.device(dev_type, 0)
-        if dev_type in ("cuda", "xpu")
-        else torch.device(dev_type)
-    )
+    return torch.device(dev_type, 0) if dev_type in ("cuda", "xpu") else torch.device(dev_type)
 
 
 def dtype() -> torch.dtype:
