@@ -83,13 +83,20 @@ def nsfw_check(file: UploadFile) -> NSFWResponse:
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise HTTPException(status_code=400, detail="File is not a valid image") from None
 
-    with checker_lock:
+    if not checker_lock.acquire(timeout=SETTINGS.LOCK_WAIT_TIMEOUT_S):  # wait for the running task
+        logger.warning(
+            f"Task {task_id}: model busy for {SETTINGS.LOCK_WAIT_TIMEOUT_S}s, returning 503"
+        )  # log so busy events can be counted
+        raise HTTPException(status_code=503, detail="Model busy, route to another worker")  # backend re-routes on 503
+
+    try:
         log_main("Running NSFW check...")
-        try:
-            result, duration = model.run_safety_check(image)
-        except InferenceError as e:
-            logger.exception(f"Task {task_id}: {e}")
-            raise HTTPException(status_code=500, detail=str(e)) from e
+        result, duration = model.run_safety_check(image)  # inference on the device
+    except InferenceError as e:  # inference failed
+        logger.exception(f"Task {task_id}: {e}")  # log full error with task id
+        raise HTTPException(status_code=500, detail=str(e)) from e  # error to the caller
+    finally:
+        checker_lock.release()
 
     log_main(f"Inference complete in {duration} seconds.")
     log_main(f"NSFW Results:\n{result.tsv()}")

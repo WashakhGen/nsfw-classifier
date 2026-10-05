@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
     MODEL_NAME: str = "Freepik/nsfw_image_detector"
     MAX_FILE_BYTES: int = 10 * 1024 * 1024  # 10 MB
+    LOCK_WAIT_TIMEOUT_S: float = 5  # max seconds a request may wait for the model before giving up
     MAX_SIDE_PX: int = 4096
     UVICORN_HOST: str = "0.0.0.0"
     UVICORN_PORT: int = 8888

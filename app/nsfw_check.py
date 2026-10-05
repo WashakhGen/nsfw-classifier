@@ -1,6 +1,6 @@
 from pathlib import Path
 from time import perf_counter
-from typing import Any, cast
+from typing import cast
 
 import numpy as np
 import torch
@@ -84,7 +84,7 @@ class NSFWCheck:
     def run_safety_check(self, image: Image.Image) -> tuple[NSFWResult, float]:
         try:
             start = perf_counter()
-            raw = self.safety_checker(image)
+            result = self.safety_checker(image)
             duration = round(perf_counter() - start, 4)
         except torch.OutOfMemoryError as e:
             hardware.empty_cache()  # free cached memory so the next request can succeed
@@ -92,7 +92,6 @@ class NSFWCheck:
         except Exception as e:
             raise InferenceError(f"Inference failed: {e}") from e
 
-        result = cast("list[dict[str, Any]]", raw)  # one image in -> list of {label, score}
         if not result:
             raise InferenceError("Model returned no predictions")
 
